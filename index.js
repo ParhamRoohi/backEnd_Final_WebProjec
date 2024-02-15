@@ -32,48 +32,35 @@ const sql = postgres({
     options: `project=${ENDPOINT_ID}`,
   },
 });
-
-
-// get all products
-// app.get("/products", async (req, res) => {
-//   sql`SELECT * FROM products`.then((result) => {
-//     res.send(result);
-//   });
-// });
-
-// search method by name
-// app.get("/products", (req, res) => {
-//   const productsName = req.params.name;
-
-//   sql`SELECT * FROM products WHERE name = ${productsName}`
-//     .then((result) => {
-//       res.send(result);
-//     })
-//     .catch((error) => {
-//       res.status(404).send("Error to find this products");
-//     });
-// });
-
-// filter by brand
-app.get("/products", async (req, res) => {
+//filter by brand & get all products & Searech by name 
+app.get('/products', async (req, res) => {
   try {
-    const brandQuery = await req.query.brand;
-     let  product = sql`SELECT * FROM products`;
-    let filtereProducts = [];
-    if (brandQuery) {
-      filtereProducts.push(sql`brand LIKE '%${brandQuery}%'`)
-      res.send(filtereProducts);
+    let name = req.query.name;
+    name = name ? name.toLowerCase() : '';
+    let brand = req.query.brand;
+    brand = brand ? brand.toLowerCase() : '';
+    let query = sql`SELECT * FROM products`;
+    if (!brand & !name) {
+      sql`SELECT * FROM products`.then((result) => {
+        res.send(result);
+      });
     }
-  }
-  // else {
-  //   sql`SELECT * FROM products`.then((result) => {
-  //     res.send(result);
-  //   });
-  // }
-  catch (err) {
-    res.send(err.message)
+    else if (name) {
+      query = sql`${query} WHERE LOWER(name) LIKE '%' || ${name} || '%'`;
+      const result = await query;
+      res.send(result);
+    }
+    else {
+      query = sql`${query} WHERE LOWER(brand) LIKE '%' || ${brand} || '%'`;
+      const result = await query;
+      res.send(result);
+    }
+  } catch (error) {
+    res.status(500).send({ error: error.message });
   }
 });
+
+
 
 // delete products
 app.delete("/products/:id", (req, res) => {
