@@ -1,8 +1,10 @@
 
 const express = require("express");
 const postgres = require('postgres');
+const cors = require("cors");
 const app = express();
 
+app.use(cors());
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 app.use((_, res, next) => {
@@ -12,7 +14,7 @@ app.use((_, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', true);
   next();
 });
-const port = 3000;
+const PORT = 3000;
 
 let PGHOST, PGDATABASE, PGUSER, PGPASSWORD, ENDPOINT_ID;
 PGHOST = 'ep-flat-hill-a5zkc9o9.us-east-2.aws.neon.tech'
@@ -32,7 +34,9 @@ const sql = postgres({
     options: `project=${ENDPOINT_ID}`,
   },
 });
-//filter by brand & get all products & Searech by name 
+
+//products request
+//get all products & Searech by name & brand
 app.get('/products', async (req, res) => {
   try {
     let name = req.query.name;
@@ -50,17 +54,22 @@ app.get('/products', async (req, res) => {
       const result = await query;
       res.send(result);
     }
-    else {
+    else if(brand){
       query = sql`${query} WHERE LOWER(brand) LIKE '%' || ${brand} || '%'`;
       const result = await query;
       res.send(result);
+    }
+    else {
+      sql`SELECT * FROM products ORDER BY price`
+      .then((result) => {
+        res.send(result);
+      })
+
     }
   } catch (error) {
     res.status(500).send({ error: error.message });
   }
 });
-
-
 
 // delete products
 app.delete("/products/:id", (req, res) => {
@@ -90,7 +99,34 @@ app.post("/products", (req, res) => {
 
 })
 
+//edit product
+app.patch("/products/:id", (req, res) => {
+  const productID = req.params.id;
+  let { name } = req.body;
+  sql`UPDATE product SET name = ${name} WHERE id = ${productID}`
+    .then(() => {
+      res.send(`Name of product with ID ${productID} has been updated.`);
+    })
+    .catch((error) => {
+      res.status(500).send("Error updating products`s name.");
+    });
+});
 
-app.listen(port, () =>
-  console.log(` My App listening at http://localhost:${port}`)
+//user request
+//get user
+app.get("/users/:id", (req, res) => {
+  const userId = req.params.id;
+
+  sql`SELECT * FROM users WHERE id = ${userId}`
+    .then(() => {
+      res.send({ message: `Users with ID ${userId} has been deleted.` });
+    })
+    .catch((error) => {
+      res.status(500).send("Error deleting users.");
+    });
+});
+
+
+app.listen(PORT, () =>
+  console.log(` My App listening at http://localhost:${PORT}`)
 );
