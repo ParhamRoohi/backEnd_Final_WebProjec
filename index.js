@@ -35,35 +35,32 @@ const sql = postgres({
   },
 });
 
+
+
 //products request
 //get all products & Searech by name & brand
 app.get('/products', async (req, res) => {
   try {
     let name = req.query.name;
-    name = name ? name.toLowerCase() : '';
     let brand = req.query.brand;
+    name = name ? name.toLowerCase() : '';
     brand = brand ? brand.toLowerCase() : '';
     let query = sql`SELECT * FROM products`;
     if (!brand & !name) {
-      sql`SELECT * FROM products`.then((result) => {
-        res.send(result);
-      });
+      query = await sql`SELECT * FROM products`;
+      res.send(query);
     }
     else if (name) {
-      query = sql`${query} WHERE LOWER(name) LIKE '%' || ${name} || '%'`;
-      const result = await query;
-      res.send(result);
+      query = await sql`${query} WHERE LOWER(name) LIKE '%' || ${name} || '%'`;
+      res.send(query);
     }
-    else if(brand){
-      query = sql`${query} WHERE LOWER(brand) LIKE '%' || ${brand} || '%'`;
-      const result = await query;
-      res.send(result);
+    else if (brand) {
+      query = sql`${query} WHERE LOWER(brand) LIKE '%' || ${brand} || '%'`;//why dont work at postman
+      res.send(query);
     }
-    else {
-      sql`SELECT * FROM products ORDER BY price`
-      .then((result) => {
-        res.send(result);
-      })
+    else if (req.query.sort) {
+      query = await sql`SELECT * FROM products ORDER BY price`;
+      res.send(query);
 
     }
   } catch (error) {
@@ -71,61 +68,94 @@ app.get('/products', async (req, res) => {
   }
 });
 
-// delete products
-app.delete("/products/:id", (req, res) => {
-  const productsId = req.params.id;
+//get product with id
+app.get("/product/:id", async (req, res) => {
+  try {
+    const productID = req.params.id;
+    let query = await sql`SELECT * FROM products WHERE id = ${productID}`;
+    res.send(query);
+  }
+  catch (error) {
+    res.status(500);
+  };
+});
 
-  sql`DELETE FROM products WHERE id = ${productsId}`
-    .then(() => {
-      res.send({ message: `Product with ID ${productsId} has been deleted.` });
-    })
-    .catch((error) => {
-      res.status(500).send("Error deleting product.");
-    });
+// delete products
+app.delete("/products/:id", async (req, res) => {
+  const productsId = req.params.id;
+  try {
+
+    let query = await sql`DELETE FROM products WHERE id = ${productsId}`;
+    res.send(query);
+  }
+  catch (error) {
+    console.log("Error to delete product:",error)
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
 
 //create new prouducts
-app.post("/products", (req, res) => {
-  const { brand, name, description, amount, storage, price } = req.body;
-  sql`INSERT INTO products (brand, productName, description, amount, storage, price) VALUES ( ${brand}, ${name}, ${description}, ${amount},${storage},${price})`.then((result) => {
-    res.send({
-      message: `New product was created. `
-    })
-    res.send(result);
-  })
-    .catch((error) => {
-      res.status(500).send("Error creating product.");
-    });
+app.post("/products", async (req, res) => {
+  try {
+    const { brand, name, description, amount, storage, price } = req.body;
+    const query = await sql`INSERT INTO products (brand, name, description, amount, storage, price) VALUES ( ${brand}, ${name}, ${description}, ${amount},${storage},${price})`
+    console.log(query);
+    res.status(200).send(query)
+  }
+  catch (error) {
+    console.log("Error to create product:",error)
+    res.status(500).json({ error: "Internal server error" });
+  }
 
 })
 
+
 //edit product
-app.patch("/products/:id", (req, res) => {
-  const productID = req.params.id;
-  let { name } = req.body;
-  sql`UPDATE product SET name = ${name} WHERE id = ${productID}`
-    .then(() => {
-      res.send(`Name of product with ID ${productID} has been updated.`);
-    })
-    .catch((error) => {
-      res.status(500).send("Error updating products`s name.");
-    });
+app.put("/products/:id", async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const { amount, price } = req.body;
+
+    const query = await sql`UPDATE products SET amount = ${amount}, price = ${price} WHERE id = ${productId}`;
+
+    res.send(query);
+  } catch (error) {
+    console.error("Error updating product:", error);
+    res.status(500).json({ error: "Internal server error" });
+  }
 });
+
+
 
 //user request
 //get user
-app.get("/users/:id", (req, res) => {
-  const userId = req.params.id;
-
-  sql`SELECT * FROM users WHERE id = ${userId}`
-    .then(() => {
-      res.send({ message: `Users with ID ${userId} has been deleted.` });
-    })
-    .catch((error) => {
-      res.status(500).send("Error deleting users.");
-    });
+app.get("/users/:id", async (req, res) => {
+  try {
+    const userId = req.params.id;
+    let query = await sql`SELECT * FROM users WHERE id = ${userId}`;
+    res.send(query);
+  }
+  catch (error) {
+    res.status(500);
+  };
 });
 
+//Login
+app.post("/LoginPage", async (req, res) => {
+  try {
+    const { username, password } = req.body;
+    const validUser = await sql`SELECT * FROM users WHERE username = ${username} AND password = ${password}`;
+    console.log(validUser);
+    if (validUser && validUser.length > 0) {
+      res.send({ user: { id: validUser[0].id, username: validUser[0].username, is_admin: validUser[0].is_admin } });
+    } else {
+      res.status(401).json({ message: 'Wrong username and/or password' });
+    }
+  } catch (error) {
+    console.log(error);
+    res.status(500).json({ message: 'Internal server error' });
+  }
+});
 
 app.listen(PORT, () =>
   console.log(` My App listening at http://localhost:${PORT}`)
