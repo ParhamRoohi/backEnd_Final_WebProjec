@@ -37,8 +37,8 @@ const sql = postgres({
 
 
 
-//products request
-//get all products & Searech by name & brand
+//Products request
+//Get all products & Searech by name & brand
 app.get('/products', async (req, res) => {
   try {
     let name = req.query.name;
@@ -68,7 +68,7 @@ app.get('/products', async (req, res) => {
   }
 });
 
-//get product with id
+//Get product with id
 app.get("/product/:id", async (req, res) => {
   try {
     const productID = req.params.id;
@@ -80,7 +80,7 @@ app.get("/product/:id", async (req, res) => {
   };
 });
 
-// delete products
+//Delete products
 app.delete("/products/:id", async (req, res) => {
   const productsId = req.params.id;
   try {
@@ -94,7 +94,7 @@ app.delete("/products/:id", async (req, res) => {
   }
 });
 
-//create new prouducts
+//Create new prouducts
 app.post("/products", async (req, res) => {
   try {
     const { brand, name, description, amount, storage, price } = req.body;
@@ -109,7 +109,7 @@ app.post("/products", async (req, res) => {
 
 })
 
-//edit product
+//Edit product
 app.put("/products/:id", async (req, res) => {
   try {
     const productId = req.params.id;
@@ -124,8 +124,8 @@ app.put("/products/:id", async (req, res) => {
   }
 });
 
-//user request
-//get user
+//User request
+//Get user
 app.get("/users/:id", async (req, res) => {
   try {
     const userId = req.params.id;
