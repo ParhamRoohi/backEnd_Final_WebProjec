@@ -109,7 +109,6 @@ app.post("/products", async (req, res) => {
 
 })
 
-
 //edit product
 app.put("/products/:id", async (req, res) => {
   try {
@@ -124,8 +123,6 @@ app.put("/products/:id", async (req, res) => {
     res.status(500).json({ error: "Internal server error" });
   }
 });
-
-
 
 //user request
 //get user
