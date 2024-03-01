@@ -1,7 +1,8 @@
-
+require('dotenv').config();
 const express = require("express");
 const postgres = require('postgres');
 const cors = require("cors");
+var sha256 = require('js-sha256');
 const app = express();
 
 app.use(cors());
@@ -14,14 +15,9 @@ app.use((_, res, next) => {
   res.setHeader('Access-Control-Allow-Credentials', true);
   next();
 });
-const PORT = 3000;
 
-let PGHOST, PGDATABASE, PGUSER, PGPASSWORD, ENDPOINT_ID;
-PGHOST = 'ep-flat-hill-a5zkc9o9.us-east-2.aws.neon.tech'
-PGDATABASE = 'finalProject'
-PGUSER = 'par81hamroohi@gmail.com'
-PGPASSWORD = 'v9lSfezO6cCg'
-ENDPOINT_ID = 'ep-flat-hill-a5zkc9o9'
+let { PGHOST, PGDATABASE, PGUSER, PGPASSWORD, ENDPOINT_ID } = process.env;
+
 
 const sql = postgres({
   host: PGHOST,
@@ -55,7 +51,7 @@ app.get('/products', async (req, res) => {
       res.send(query);
     }
     else if (brand) {
-      query = sql`${query} WHERE LOWER(brand) LIKE '%' || ${brand} || '%'`;//why dont work at postman
+      query = await sql`${query} WHERE LOWER(brand) LIKE '%' || ${brand} || '%'`;
       res.send(query);
     }
     else if (req.query.sort) {
@@ -69,7 +65,7 @@ app.get('/products', async (req, res) => {
 });
 
 //Get product with id
-app.get("/product/:id", async (req, res) => {
+app.get("/products/:id", async (req, res) => {
   try {
     const productID = req.params.id;
     let query = await sql`SELECT * FROM products WHERE id = ${productID}`;
@@ -84,13 +80,13 @@ app.get("/product/:id", async (req, res) => {
 app.delete("/products/:id", async (req, res) => {
   const productsId = req.params.id;
   try {
-
-    let query = await sql`DELETE FROM products WHERE id = ${productsId}`;
+    const query = await sql`DELETE FROM products WHERE id = ${productsId}`;
     res.send(query);
   }
   catch (error) {
-    console.log("Error to delete product:",error)
     res.status(500).json({ error: "Internal server error" });
+    console.log("Error to delete product:", error)
+
   }
 });
 
@@ -103,8 +99,9 @@ app.post("/products", async (req, res) => {
     res.status(200).send(query)
   }
   catch (error) {
-    console.log("Error to create product:",error)
     res.status(500).json({ error: "Internal server error" });
+    console.log("Error to create product:", error)
+
   }
 
 })
@@ -119,10 +116,27 @@ app.put("/products/:id", async (req, res) => {
 
     res.send(query);
   } catch (error) {
-    console.error("Error updating product:", error);
     res.status(500).json({ error: "Internal server error" });
+    console.error("Error updating product:", error);
+
   }
 });
+
+//change amount
+app.patch("/products/:id", async (req, res) => {
+  try {
+    const productId = req.params.id;
+    const { amount } = req.body;
+
+    const query = await sql`UPDATE products SET amount = ${amount} WHERE id = ${productId}`;
+
+    res.send(query)
+  } catch (error) {
+
+    res.status(500).json({ error: "Internal server error" });
+    console.error("Error updating product:", error);
+  }
+})
 
 //User request
 //Get user
@@ -138,22 +152,41 @@ app.get("/users/:id", async (req, res) => {
 });
 
 //Login
-app.post("/LoginPage", async (req, res) => {
+app.post("/users", async (req, res) => {
   try {
     const { username, password } = req.body;
-    const validUser = await sql`SELECT * FROM users WHERE username = ${username} AND password = ${password}`;
+    const enPass = sha256(password);
+    const validUser = await sql`SELECT * FROM users WHERE username = ${username} AND password = ${enPass} `;
     console.log(validUser);
     if (validUser && validUser.length > 0) {
       res.send({ user: { id: validUser[0].id, username: validUser[0].username, is_admin: validUser[0].is_admin } });
-    } else {
+    } else if (!(username === username) && !(password === password)) {
       res.status(401).json({ message: 'Wrong username and/or password' });
     }
+    else if (!validUser && username.length > 0 && password.length > 0) {
+      const newUser = await sql`INSERT INTO users (username, password, is_admin) VALUES (${username}, ${enPass}, false) RETURNING *`;
+      res.status(201).json({ message: 'User created successfully', user: { error: newUser[0].username, password: newUser[0].password } });
+      console.log("new", newUser);
+    }
   } catch (error) {
-    console.log(error);
-    res.status(500).json({ message: 'Internal server error' });
+    res.status(500).json({ error: 'Internal server error' });
+  }
+});
+//sales
+app.post("/sales", async (req, res) => {
+  const { user_id, product_id } = req.body;
+  try {
+    const query = await sql`
+      INSERT INTO sales (user_id, product_id)
+      VALUES (${user_id}, ${product_id})
+    `;
+    res.send(query);
+  } catch (error) {
+    console.error("Error adding sales:", error);
+    res.status(500).send({ error: "Internal server error" });
   }
 });
 
-app.listen(PORT, () =>
-  console.log(` My App listening at http://localhost:${PORT}`)
+app.listen(process.env.PORT, () =>
+  console.log(` My App listening at http://localhost:${process.env.PORT}`)
 );
