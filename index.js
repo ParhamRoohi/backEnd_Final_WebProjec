@@ -67,8 +67,8 @@ app.get('/products', async (req, res) => {
 //Get product with id
 app.get("/products/:id", async (req, res) => {
   try {
-    const productID = req.params.id;
-    let query = await sql`SELECT * FROM products WHERE id = ${productID}`;
+    const productId = req.params.id;
+    let query = await sql`SELECT * FROM products WHERE id = ${productId}`;
     res.send(query);
   }
   catch (error) {
@@ -76,17 +76,16 @@ app.get("/products/:id", async (req, res) => {
   };
 });
 
-//Delete products
+//delete products
 app.delete("/products/:id", async (req, res) => {
-  const productsId = req.params.id;
+  const productId = req.params.id;
   try {
-    const query = await sql`DELETE FROM products WHERE id = ${productsId}`;
+    await sql`UPDATE sales SET product_id = NULL WHERE product_id = ${productId}`;
+    const query = await sql`DELETE FROM products WHERE id = ${productId}`;
     res.send(query);
-  }
-  catch (error) {
+  } catch (error) {
     res.status(500).json({ error: "Internal server error" });
-    console.log("Error to delete product:", error)
-
+    console.log("Error deleting product:", error);
   }
 });
 
